@@ -67,3 +67,15 @@ To decrypt the encrypted string, your cookbook needs to support it and you need 
 patched version of the openssl cookbook. For an example and the patched openssl 
 cookbook check https://github.com/oscarschneider/openssldemo.
 
+role secret add
+===============
+
+This plugin basically works the same way as node secret add, however you don't pass
+a node name as parameter but a role name.
+
+It will then query the Chef server for all nodes of role X and basically runs a 
+`knife node secret add NODE secret attribute` on those. This is useful if you e.g.
+have a set of servers that all need to have the same password for a certain service.
+   `knife role secret add mysql_servers foo mysql.rootpw`
+This plugin offers the same options as node secret add except for the `-x` option.
+

@@ -107,8 +107,12 @@ class Chef
         @currenthash = Hash.new
         path = find_relative_git_cookbook_path
         #puts "path is '#{path}'"
-        tree = commit.tree / path
-        git_checksum_hash(tree)
+        unless path == '.'
+          tree = commit.tree / path
+          git_checksum_hash(tree)
+        else
+          git_checksum_hash(commit.tree)
+        end
       end
 
       # Recursively builds hash of relative paths of files in cookbook

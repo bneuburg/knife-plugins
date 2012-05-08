@@ -212,7 +212,8 @@ class Chef
 
         print "Checking revision history"
         match = nil
-        closest = nil
+        # initialize closest match with head
+        closest = repo.head.commit.to_s
         best_delta = nil
         repo.commits.each do |commit|
           # Progress indicator
@@ -230,12 +231,12 @@ class Chef
           end
 
           if delta < best_delta
-            closest = commit
+            closest = commit.to_s
             best_delta = delta
           end
 
         end
-        puts "Didn't find a matching commit, however commit #{closest.object_id} only has #{best_delta} differing files." unless match
+        puts "Didn't find a matching commit, however commit #{closest} only has #{best_delta} differing files." unless match
         return match
       end
 

@@ -6,9 +6,9 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +17,7 @@
 #
 
 require 'chef/knife'
+require 'pathname'
 
 
 # include diff method for hashes, copied from Rails
@@ -100,16 +101,20 @@ class Chef
         :long => "--threeway",
         :description => "Compare server version with local and gitorious version"
 
+      # get checksums for the current cookbook from local git repository
       def get_checksums(commit)
         # Reset @currenthash
         @currenthash = Hash.new
-        git_checksum_hash(commit.tree)        
+        path = find_relative_git_cookbook_path
+        #puts "path is '#{path}'"
+        tree = commit.tree / path
+        git_checksum_hash(tree)
       end
 
       # Recursively builds hash of relative paths of files in cookbook
       # and the according md5 checksum
       def git_checksum_hash(tree, prefix=nil)
-        
+
         tree.contents.each do |obj|
           if obj.class == Grit::Blob
             item = [prefix, obj.name].join
@@ -138,7 +143,34 @@ class Chef
         return local_path
       end
 
+      # recursively walk up the path looking for the git root (holds .git dir)
+      def find_git_root(path)
+
+         git_path = nil
+         path = Pathname.new(path)
+         while( path && !git_path ) do
+             current_path = File.join(path,".git")
+             if File.directory? current_path
+                git_path = path
+             end
+             path = path.parent
+         end
+
+         return git_path
+      end
+
+      # return the path of the cookbook relative to the git root
+      def find_relative_git_cookbook_path
+
+        cb = Pathname.new(find_local_cookbook).realpath()
+        git_root = Pathname.new(find_git_root(cb)).realpath()
+        relative = cb.relative_path_from(git_root)
+        #puts ("find cb \n#{cb} relative to path\n#{git_root} and it is \n#{relative}")
+        return relative.to_s
+      end
+
       def get_remote_cookbook
+
         target_dir = "/tmp/.kcbs#{rand.to_s.split(".")[1]}"
         source = "#{@git_url}/#{@cookbook_name}.git"
         fetch_it = Grit::Git.new(target_dir)
@@ -148,14 +180,15 @@ class Chef
       end
 
       def get_repos
+
         relevant_repos = []
-        if config[:gitorious]          
+        if config[:gitorious]
           return [get_remote_cookbook]
         elsif config[:threeway]
-          local_repo = Grit::Repo.new(find_local_cookbook)
+          local_repo = Grit::Repo.new(find_git_root(find_local_cookbook))
           return [get_remote_cookbook, local_repo]
-        else          
-          return [Grit::Repo.new(find_local_cookbook)]
+        else
+          return [Grit::Repo.new(find_git_root(find_local_cookbook))]
         end
       end
 
@@ -196,7 +229,7 @@ class Chef
             closest = commit
             best_delta = delta
           end
-          
+
         end
         puts "Didn't find a matching commit, however commit #{closest.object_id} only has #{best_delta} differing files." unless match
         return match
@@ -207,7 +240,7 @@ class Chef
         output("Local #{cookbook_name} cookbook and server version have mismatches.")
         file_names = current_diff(checksums_source, checksums_destination).keys
         longest_filename = file_names.max_by{ |string| string.length }
-        
+
         format_string = "%-#{longest_filename.length}s  %-32s   %-32s"
         output(format_string % ["Filename", "Chef server md5sum", "Local/gitorious md5sum"])
         src_md5 = nil
@@ -217,7 +250,7 @@ class Chef
             src_md5 = checksums_source[file]
           else
             src_md5 = "NONE"
-          end              
+          end
           if checksums_destination.has_key? file
             dest_md5 = checksums_destination[file]
           else
@@ -228,9 +261,9 @@ class Chef
 
       end
 
-      def run 
+      def run
         case @name_args.length
-          
+
         when 1..2
           node = Hash.new
           @git_url = config[:git_url] ||= Chef::Config[:git_url]
@@ -264,7 +297,7 @@ class Chef
             unless cb_hash[cb_part].empty?
               cb_hash[cb_part].each{ |file_info| @server_checksums[file_info['path']] = file_info['checksum'] }
             end
-         
+
           end
 
           commit_number = 0
@@ -284,7 +317,7 @@ class Chef
             end
             puts "Found matching commit #{hit} in #{origin}." if hit
           end
-          
+
         when 0
           show_usage
           ui.fatal("You must specify a cookbook name")

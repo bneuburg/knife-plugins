@@ -101,12 +101,18 @@ class Chef
         :long => "--threeway",
         :description => "Compare server version with local and gitorious version"
 
+     option :branchOrHash,
+        :short => "-b",
+        :long => "--branch-or-commithash BRANCH",
+        :description => "Compare with this branch or commit version"
+
       # get checksums for the current cookbook from local git repository
       def get_checksums(commit)
         # Reset @currenthash
         @currenthash = Hash.new
         path = find_relative_git_cookbook_path
-        #puts "path is '#{path}'"
+        #puts "path is '#{path}' commit hash is #{commit}"
+        #puts "commit.tree is #{commit.tree}"
         unless path == '.'
           tree = commit.tree / path
           git_checksum_hash(tree)
@@ -123,6 +129,7 @@ class Chef
           if obj.class == Grit::Blob
             item = [prefix, obj.name].join
             @currenthash[item] = Digest::MD5.hexdigest(obj.data)
+            #puts "#{item} : " + @currenthash[item]
           else
             git_checksum_hash(obj, [prefix, obj.name, "/"].join)
           end
@@ -213,9 +220,11 @@ class Chef
         print "Checking revision history"
         match = nil
         # initialize closest match with head
-        closest = repo.head.commit.to_s
+        closest = repo.commit(@commit_branch).to_s
+        max_commit_to_check = 10
+        commits_to_skip = 0
         best_delta = nil
-        repo.commits.each do |commit|
+        repo.commits(closest, max_commit_to_check, commits_to_skip).each do |commit|
           # Progress indicator
           print '.'
 
@@ -305,9 +314,13 @@ class Chef
 
           end
 
-          commit_number = 0
+          @commit_branch = 'master'
+          if config[:branchOrHash]
+            @commit_branch = config[:branchOrHash]
+          end
+
           get_repos.each_with_index do |gitrepo, i|
-            @currenthash = get_checksums(gitrepo.commits[0])
+            @currenthash = get_checksums(gitrepo.commits(@commit_branch)[0])
             if current_diff(@currenthash, @server_checksums).length == 0
               output("Local #{@cookbook_name} cookbook and server version (#{cookbook.version}) match.")
               next

@@ -9,7 +9,7 @@ Gem requirements:
 cookbook status
 ===============
 
-To compare the server version of a cookbook with one in the cookbook path 
+To compare the server version of a cookbook with one in the cookbook path
 on your workstation, simply run
    `knife cookbook status COOKBOOKNAME`
 This will compare the latest version of COOKBOOKNAME on the server with one
@@ -24,14 +24,16 @@ To compare a server cookbook with a remote git repository, you either need to
 set `git_url` in your `knife.rb` to e.g. "https://github.com/cookbooks" or pass the
 url with the `--git-url` option, and need to pass the `-g` option additionally.
 NOTE: It is important that each cookbook at the remote url is kept as a separate git
-repository, e.g. when you run 
+repository, e.g. when you run
    `knife cookbook status apache2 -g --git-url "git://myrepo/stuff"`
 you need to make sure that there is a git repo "git://myrepo/stuff/apache2.git".
 
 To search for a commit in your git repo that matches the server version the closest,
 use the `-r` option.
 
-For a threeway comparision, i.e. comparing the chef server version with the local 
+To use a particular commit hash or branch for comparison use the `-b` option.
+
+For a threeway comparision, i.e. comparing the chef server version with the local
 one and the one in your git remote source, use the `-t` option.
 
 node secret add
